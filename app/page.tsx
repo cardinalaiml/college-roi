@@ -1,40 +1,8 @@
-import { CollegeCard, type CollegeCardProps } from "@/components/CollegeCard";
+import { CollegeCard } from "@/components/CollegeCard";
 import { SearchBar } from "@/components/SearchBar";
+import { EXAMPLE_COLLEGES } from "@/lib/example-colleges";
 
 type SearchParams = { q?: string };
-
-const EXAMPLE_COLLEGES: CollegeCardProps[] = [
-  {
-    name: "Massachusetts Institute of Technology",
-    city: "Cambridge",
-    state: "MA",
-    control: 2,
-    netPrice: 22230,
-    salary10yr: 124200,
-    unitId: 166683,
-    slug: "massachusetts-institute-of-technology",
-  },
-  {
-    name: "University of California-Los Angeles",
-    city: "Los Angeles",
-    state: "CA",
-    control: 1,
-    netPrice: 14760,
-    salary10yr: 74700,
-    unitId: 110662,
-    slug: "university-of-california-los-angeles",
-  },
-  {
-    name: "Northern Virginia Community College",
-    city: "Annandale",
-    state: "VA",
-    control: 1,
-    netPrice: 8930,
-    salary10yr: 41600,
-    unitId: 232867,
-    slug: "northern-virginia-community-college",
-  },
-];
 
 export default function Home({
   searchParams,

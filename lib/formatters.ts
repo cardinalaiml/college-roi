@@ -1,6 +1,8 @@
 export function formatCurrency(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "Not available";
-  return `$${Math.round(n).toLocaleString("en-US")}`;
+  const rounded = Math.round(n);
+  const sign = rounded < 0 ? "-" : "";
+  return `${sign}$${Math.abs(rounded).toLocaleString("en-US")}`;
 }
 
 export function formatPercent(n: number | null | undefined): string {
