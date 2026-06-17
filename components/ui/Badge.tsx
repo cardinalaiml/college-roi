@@ -3,7 +3,7 @@ type Control = 1 | 2 | 3;
 const STYLES: Record<Control, { label: string; className: string }> = {
   1: {
     label: "Public",
-    className: "bg-brand-blue-50 text-brand-blue-700",
+    className: "bg-brand-green-50 text-brand-green-700",
   },
   2: {
     label: "Private",
@@ -11,7 +11,7 @@ const STYLES: Record<Control, { label: string; className: string }> = {
   },
   3: {
     label: "For-Profit",
-    className: "bg-brand-amber-50 text-brand-amber-600",
+    className: "bg-brand-gold-50 text-brand-gold-600",
   },
 };
 

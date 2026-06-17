@@ -27,7 +27,7 @@ export function CollegeCard({
   return (
     <Link
       href={`/college/${unitId}-${slug}`}
-      className="group block rounded-lg border border-brand-gray-200 bg-white p-4 shadow-card transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand-gray-300 hover:shadow-card-hover"
+      className="group block rounded-xl border border-brand-gray-200 bg-white p-4 shadow-card transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand-green-300 hover:shadow-card-hover"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-base font-medium text-brand-black">{name}</h3>

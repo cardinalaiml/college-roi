@@ -55,10 +55,14 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
     result.breakEvenYear !== null && result.breakEvenYear <= 20;
 
   return (
-    <section className="rounded-xl border border-brand-gray-200 bg-white p-6 shadow-card">
-      <h2 className="text-2xl font-medium text-brand-black">
-        Your ROI Calculator
+    <section className="rounded-2xl border border-brand-green-100 bg-white p-6 shadow-card">
+      <h2 className="text-2xl font-bold text-brand-green-700">
+        💹 Your Full ROI Calculator
       </h2>
+      <p className="mt-1 text-sm text-brand-gray-500">
+        Adds salary, opportunity cost, and a 20-year earnings projection on
+        top of the loan math.
+      </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <NumberField
@@ -91,7 +95,7 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
       </div>
 
       {allZero ? (
-        <p className="mt-6 rounded-md bg-brand-gray-50 p-4 text-sm text-brand-gray-500">
+        <p className="mt-6 rounded-md bg-brand-green-50 p-4 text-sm text-brand-gray-600">
           Enter a degree cost and expected salary to calculate your ROI.
         </p>
       ) : (
@@ -141,15 +145,15 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
                   <CartesianGrid stroke="transparent" />
                   <XAxis
                     dataKey="year"
-                    stroke="#9A9690"
-                    tick={{ fontSize: 12, fill: "#9A9690" }}
-                    axisLine={{ stroke: "#E1DFD9" }}
+                    stroke="#9E9E9E"
+                    tick={{ fontSize: 12, fill: "#9E9E9E" }}
+                    axisLine={{ stroke: "#E0E0E0" }}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#9A9690"
-                    tick={{ fontSize: 12, fill: "#9A9690" }}
-                    axisLine={{ stroke: "#E1DFD9" }}
+                    stroke="#9E9E9E"
+                    tick={{ fontSize: 12, fill: "#9E9E9E" }}
+                    axisLine={{ stroke: "#E0E0E0" }}
                     tickLine={false}
                     tickFormatter={formatAxisDollars}
                     width={60}
@@ -157,7 +161,7 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
                   <Tooltip
                     contentStyle={{
                       background: "#ffffff",
-                      border: "1px solid #E1DFD9",
+                      border: "1px solid #E0E0E0",
                       borderRadius: 6,
                       fontSize: 14,
                     }}
@@ -170,12 +174,12 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
                   {breakEvenInChart && (
                     <ReferenceLine
                       x={result.breakEvenYear ?? undefined}
-                      stroke="#9A9690"
+                      stroke="#9E9E9E"
                       strokeDasharray="3 3"
                       label={{
                         value: "Break-even",
                         position: "top",
-                        fill: "#6B6762",
+                        fill: "#616161",
                         fontSize: 11,
                       }}
                     />
@@ -183,7 +187,7 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
                   <Line
                     type="monotone"
                     dataKey="degreeEarnings"
-                    stroke="#2563EB"
+                    stroke="#0B6623"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
@@ -191,7 +195,7 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
                   <Line
                     type="monotone"
                     dataKey="noDegreeEarnings"
-                    stroke="#9A9690"
+                    stroke="#F57C00"
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={false}
@@ -309,14 +313,14 @@ function ChartLegend() {
       <span className="inline-flex items-center gap-2">
         <span
           className="inline-block h-0.5 w-4"
-          style={{ background: "#2563EB" }}
+          style={{ background: "#0B6623" }}
         />
         With degree
       </span>
       <span className="inline-flex items-center gap-2">
         <span
           className="inline-block h-0.5 w-4 border-t border-dashed"
-          style={{ borderColor: "#9A9690" }}
+          style={{ borderColor: "#F57C00" }}
         />
         Without degree
       </span>
