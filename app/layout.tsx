@@ -1,22 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-inter",
-});
+import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tasslecost.com"),
+  metadataBase: new URL("https://tasselcost.com"),
   title: {
-    default: "TassleCost — Is Your College Worth It?",
-    template: "%s | TassleCost",
+    default: "Tassel CO$T — Free College Cost Comparison & Student Loan Calculator",
+    template: "%s | Tassel CO$T",
   },
   description:
-    "Compare real costs and salary outcomes for 7,000+ colleges. Find out if your degree pays off before you sign.",
+    "Compare costs from 6,500+ colleges using official Department of Education data. Free loan calculator, ROI analysis, and guides to financial aid, scholarships, and student loans.",
 };
 
 export default function RootLayout({
@@ -25,10 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-brand-gray-50 text-brand-black">
+    <html lang="en">
+      <body className="flex min-h-screen flex-col bg-brand-gray-50 text-brand-black">
         <Header />
-        <main>{children}</main>
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );

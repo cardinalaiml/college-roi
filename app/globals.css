@@ -1,39 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-black: #0A0A0A;
+  --color-brand-black: #212121;
   --color-brand-white: #FFFFFF;
 
-  --color-brand-gray-50:  #F9F9F8;
-  --color-brand-gray-100: #F0EFED;
-  --color-brand-gray-200: #E1DFD9;
-  --color-brand-gray-300: #C8C5BE;
-  --color-brand-gray-400: #9A9690;
-  --color-brand-gray-500: #6B6762;
-  --color-brand-gray-600: #4A4743;
-  --color-brand-gray-700: #302E2B;
-  --color-brand-gray-800: #1C1B18;
+  /* Tassel neutral scale (gray family from Tassel CSS vars) */
+  --color-brand-gray-50:  #FAFAFA;
+  --color-brand-gray-100: #F5F5F5;
+  --color-brand-gray-200: #E0E0E0;
+  --color-brand-gray-300: #BDBDBD;
+  --color-brand-gray-400: #9E9E9E;
+  --color-brand-gray-500: #616161;
+  --color-brand-gray-600: #424242;
+  --color-brand-gray-700: #303030;
+  --color-brand-gray-800: #212121;
 
-  --color-brand-blue-50:  #EFF6FF;
-  --color-brand-blue-100: #DBEAFE;
-  --color-brand-blue-500: #3B82F6;
-  --color-brand-blue-600: #2563EB;
-  --color-brand-blue-700: #1D4ED8;
+  /* Tassel primary green */
+  --color-brand-green-50:  #E8F5E9;    /* mint */
+  --color-brand-green-100: #C8E6C9;
+  --color-brand-green-300: #66BB6A;    /* light */
+  --color-brand-green-500: #4CAF50;    /* success */
+  --color-brand-green-600: #0B6623;    /* primary */
+  --color-brand-green-700: #094d1a;    /* dark */
 
-  --color-brand-green-50:  #F0FDF4;
-  --color-brand-green-100: #DCFCE7;
-  --color-brand-green-600: #16A34A;
-  --color-brand-green-700: #15803D;
+  /* Tassel gold */
+  --color-brand-gold-50:  #FFF3E0;    /* light */
+  --color-brand-gold-100: #FFE0B2;
+  --color-brand-gold-500: #FFB300;    /* primary */
+  --color-brand-gold-600: #F57C00;    /* dark */
 
-  --color-brand-red-50:  #FFF1F2;
-  --color-brand-red-100: #FFE4E6;
-  --color-brand-red-600: #DC2626;
+  /* Status */
+  --color-brand-red-50:  #FFEBEE;
+  --color-brand-red-600: #F44336;
 
-  --color-brand-amber-50:  #FFFBEB;
-  --color-brand-amber-100: #FEF3C7;
-  --color-brand-amber-600: #D97706;
+  --color-brand-blue-50:  #E3F2FD;
+  --color-brand-blue-600: #1976D2;
 
-  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", Menlo, monospace;
 
   --text-2xs: 11px;
@@ -54,14 +58,18 @@
   --text-3xl--line-height: 36px;
   --text-4xl: 36px;
   --text-4xl--line-height: 44px;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 56px;
 
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+  --radius-2xl: 16px;
 
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-header: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 * {
@@ -70,8 +78,9 @@
 
 html,
 body {
-  background-color: #F9F9F8;
-  color: #0A0A0A;
+  background-color: #FAFAFA;
+  color: #212121;
   font-family: var(--font-sans);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
