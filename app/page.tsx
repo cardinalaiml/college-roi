@@ -4,7 +4,6 @@ import { LoanCalculator } from "@/components/LoanCalculator";
 import { ROICalculator } from "@/components/ROICalculator";
 import { SearchBar } from "@/components/SearchBar";
 import { SearchResults } from "@/components/SearchResults";
-import { Sidebar } from "@/components/Sidebar";
 import { EXAMPLE_COLLEGES } from "@/lib/example-colleges";
 
 type SearchParams = { q?: string };
@@ -19,25 +18,20 @@ export default function Home({
   return (
     <>
       <Hero />
-      <div className="mx-auto max-w-[1400px] px-5 py-8 lg:py-10">
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div className="flex flex-col gap-6">
-            <SearchSection initialQuery={query} />
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-5 py-8 lg:py-10">
+        <SearchSection initialQuery={query} />
 
-            {query ? (
-              <SearchResults query={query} />
-            ) : (
-              <>
-                <ExampleCollegesSection />
-                <LoanCalculator />
-                <section id="roi" className="scroll-mt-20">
-                  <ROICalculator defaultCost={null} defaultSalary={null} />
-                </section>
-              </>
-            )}
-          </div>
-          <Sidebar />
-        </div>
+        {query ? (
+          <SearchResults query={query} />
+        ) : (
+          <>
+            <ExampleCollegesSection />
+            <LoanCalculator />
+            <section id="roi" className="scroll-mt-20">
+              <ROICalculator defaultCost={null} defaultSalary={null} />
+            </section>
+          </>
+        )}
       </div>
     </>
   );
