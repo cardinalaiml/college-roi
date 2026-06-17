@@ -1,5 +1,6 @@
 import { CollegeCard } from "@/components/CollegeCard";
 import { SearchBar } from "@/components/SearchBar";
+import { SearchResults } from "@/components/SearchResults";
 import { EXAMPLE_COLLEGES } from "@/lib/example-colleges";
 
 type SearchParams = { q?: string };
@@ -14,9 +15,7 @@ export default function Home({
   if (query) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <p className="text-sm text-brand-gray-500">
-          Showing results for &ldquo;{query}&rdquo;.
-        </p>
+        <SearchResults query={query} />
       </div>
     );
   }
