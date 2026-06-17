@@ -12,26 +12,39 @@ drop table if exists colleges cascade;
 
 -- ============================================================
 -- colleges: one row per IPEDS institution
--- Populated by scripts/etl-scorecard.ts from the College
--- Scorecard "Most Recent Data" CSV.
+-- Populated by scripts/etl-scorecard.ts from
+-- Most-Recent-Cohorts-Institution.csv (the Dept of Ed composite
+-- of the latest reported value for each metric across cohort
+-- years). See docs/scorecard-profiling-report.md for the source
+-- column survey and per-field populated rates.
 -- ============================================================
 create table colleges (
   id bigserial primary key,
   unit_id integer not null unique,                  -- IPEDS UNITID
-  name text not null,
-  city text,
-  state text,                                       -- 2-letter postal abbreviation
-  control smallint,                                 -- 1=public, 2=private nonprofit, 3=private for-profit
+  name text not null,                               -- INSTNM
+  city text,                                        -- CITY
+  state text,                                       -- STABBR (2-letter postal abbreviation)
+  zip text,                                         -- ZIP
+  control smallint,                                 -- CONTROL: 1=public, 2=private nonprofit, 3=private for-profit
 
-  -- Cost
-  net_price integer,                                -- annual net price after average aid (NPT4_PUB/PRIV)
-  cost_of_attendance integer,                       -- annual sticker price (COSTT4_A)
-  tuition_in_state integer,
-  tuition_out_state integer,
+  -- Cost (top-line)
+  net_price integer,                                -- NPT4_PUB / NPT4_PRIV (avg net price after aid)
+  cost_of_attendance integer,                       -- COSTT4_A (annual COA, academic-year institutions)
+
+  -- Cost components (so we can show the breakdown on detail page)
+  tuition_in_state integer,                         -- TUITIONFEE_IN (57.9% populated)
+  tuition_out_state integer,                        -- TUITIONFEE_OUT (57.9%)
+  books_supplies integer,                           -- BOOKSUPPLY (52.2%)
+  room_board_on integer,                            -- ROOMBOARD_ON  (30.9%)
+  room_board_off integer,                           -- ROOMBOARD_OFF (52.5%)
+  other_expense_on integer,                         -- OTHEREXPENSE_ON  (30.9%)
+  other_expense_off integer,                        -- OTHEREXPENSE_OFF (52.5%)
+  other_expense_fam integer,                        -- OTHEREXPENSE_FAM (52.5%)
 
   -- Debt
-  median_debt integer,                              -- median debt at graduation
-  monthly_payment integer,                          -- estimated monthly payment, 10yr standard
+  median_debt integer,                              -- GRAD_DEBT_MDN (76.2% populated)
+  monthly_payment integer,                          -- GRAD_DEBT_MDN10YR (76.2% — monthly @ 10yr standard)
+  pct_with_loan real,                               -- PCTFLOAN (87.7% — % of UGs with federal loan)
 
   -- Outcomes
   salary_6yr integer,                               -- MD_EARN_WNE_P6
@@ -40,14 +53,14 @@ create table colleges (
     check (salary_null_reason in ('suppressed', 'not_reported') or salary_null_reason is null),
 
   -- Performance
-  graduation_rate real,                             -- 0..1, 150% of normal time
-  retention_rate real,                              -- 0..1, full-time first-year
+  graduation_rate real,                             -- 0..1, 150% of normal time (C150_4 / C150_L4)
+  retention_rate real,                              -- 0..1, full-time first-year (RET_FT4 / RET_FTL4)
 
   -- Profile
   undergrad_size integer,                           -- UGDS
   pred_degree smallint,                             -- 0..4, PREDDEG
-  accreditor text,
-  url text,
+  accreditor text,                                  -- ACCREDAGENCY
+  url text,                                         -- INSTURL
 
   -- Full-text index source
   search_vector tsvector generated always as (

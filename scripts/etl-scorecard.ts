@@ -1,11 +1,24 @@
 /**
  * Scorecard ETL.
  *
- *   1. Download "Most Recent Data" from https://collegescorecard.ed.gov/data/
- *   2. Unzip → take MERGED<year>_<year>_PP.csv → save as data/scorecard.csv
- *   3. npm run etl
+ * Primary source: Most-Recent-Cohorts-Institution.csv
+ *   - Department of Ed composites the latest reported value for each metric
+ *     across cohort years. Lowest null rate (see
+ *     docs/scorecard-profiling-report.md).
+ *   - File lives in the Scorecard raw-data download next to the
+ *     MERGED<year>_PP.csv files.
  *
- * Idempotent: upserts on unit_id, safe to re-run.
+ * Usage:
+ *   # Dry-run (no DB writes — prints populated counts per field)
+ *   npm run etl -- --dry-run
+ *
+ *   # Real load
+ *   npm run etl
+ *
+ *   # Custom path
+ *   SCORECARD_CSV=/path/to/file.csv npm run etl
+ *
+ * Idempotent on unit_id; safe to re-run.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -15,8 +28,19 @@ import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: ".env.local" });
 
-const CSV_PATH = path.resolve("data/scorecard.csv");
 const BATCH_SIZE = 500;
+const DRY_RUN = process.argv.includes("--dry-run");
+
+// Look in these locations in order. First file that exists wins.
+const CANDIDATE_PATHS = [
+  process.env.SCORECARD_CSV,
+  "data/Most-Recent-Cohorts-Institution.csv",
+  path.resolve(
+    process.env.HOME ?? "",
+    "Desktop/College_Scorecard_Raw_Data_03232026/Most-Recent-Cohorts-Institution.csv",
+  ),
+  "data/scorecard.csv",
+].filter((p): p is string => Boolean(p));
 
 type Row = Record<string, string>;
 
@@ -25,13 +49,21 @@ type College = {
   name: string;
   city: string | null;
   state: string | null;
+  zip: string | null;
   control: number | null;
   net_price: number | null;
   cost_of_attendance: number | null;
   tuition_in_state: number | null;
   tuition_out_state: number | null;
+  books_supplies: number | null;
+  room_board_on: number | null;
+  room_board_off: number | null;
+  other_expense_on: number | null;
+  other_expense_off: number | null;
+  other_expense_fam: number | null;
   median_debt: number | null;
   monthly_payment: number | null;
+  pct_with_loan: number | null;
   salary_6yr: number | null;
   salary_10yr: number | null;
   salary_null_reason: string | null;
@@ -43,16 +75,15 @@ type College = {
   url: string | null;
 };
 
+// Scorecard sentinel tokens that mean "no value".
+// Profiling report calls these out — without all four, NA and PS rows
+// would slip through as the literal strings and fail integer coercion.
+const NULL_TOKENS = new Set(["", "NULL", "PrivacySuppressed", "NA", "PS"]);
+
 function num(value: string | undefined): number | null {
   if (value === undefined || value === null) return null;
   const trimmed = value.trim();
-  if (
-    trimmed === "" ||
-    trimmed === "NULL" ||
-    trimmed === "PrivacySuppressed"
-  ) {
-    return null;
-  }
+  if (NULL_TOKENS.has(trimmed)) return null;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
 }
@@ -65,7 +96,7 @@ function int(value: string | undefined): number | null {
 function str(value: string | undefined): string | null {
   if (value === undefined) return null;
   const trimmed = value.trim();
-  if (trimmed === "" || trimmed === "NULL") return null;
+  if (NULL_TOKENS.has(trimmed)) return null;
   return trimmed;
 }
 
@@ -74,10 +105,10 @@ function netPriceFrom(row: Row): number | null {
 }
 
 function salaryNullReason(value: string | undefined): string | null {
-  if (value === "PrivacySuppressed") return "suppressed";
   if (value === undefined || value === null) return "not_reported";
   const trimmed = value.trim();
-  if (trimmed === "" || trimmed === "NULL") return "not_reported";
+  if (trimmed === "PrivacySuppressed" || trimmed === "PS") return "suppressed";
+  if (NULL_TOKENS.has(trimmed)) return "not_reported";
   return null;
 }
 
@@ -90,14 +121,22 @@ function transform(row: Row): College | null {
     name,
     city: str(row.CITY),
     state: str(row.STABBR),
+    zip: str(row.ZIP),
     control: int(row.CONTROL),
     net_price: netPriceFrom(row),
     cost_of_attendance: int(row.COSTT4_A) ?? int(row.COSTT4_P),
     tuition_in_state: int(row.TUITIONFEE_IN),
     tuition_out_state: int(row.TUITIONFEE_OUT),
+    books_supplies: int(row.BOOKSUPPLY),
+    room_board_on: int(row.ROOMBOARD_ON),
+    room_board_off: int(row.ROOMBOARD_OFF),
+    other_expense_on: int(row.OTHEREXPENSE_ON),
+    other_expense_off: int(row.OTHEREXPENSE_OFF),
+    other_expense_fam: int(row.OTHEREXPENSE_FAM),
     median_debt: int(row.GRAD_DEBT_MDN),
     monthly_payment:
       int(row.GRAD_DEBT_MDN10YR_SUPP) ?? int(row.GRAD_DEBT_MDN10YR),
+    pct_with_loan: num(row.PCTFLOAN),
     salary_6yr: int(row.MD_EARN_WNE_P6),
     salary_10yr: int(row.MD_EARN_WNE_P10),
     salary_null_reason: salaryNullReason(row.MD_EARN_WNE_P10),
@@ -123,53 +162,76 @@ async function upsertBatch(
   }
 }
 
+function resolveCsvPath(): string {
+  for (const p of CANDIDATE_PATHS) {
+    if (fs.existsSync(p)) return p;
+  }
+  console.error("Scorecard CSV not found. Looked in:");
+  for (const p of CANDIDATE_PATHS) console.error(`  • ${p}`);
+  console.error(
+    '\nDownload "Most Recent Data" from https://collegescorecard.ed.gov/data/',
+  );
+  console.error(
+    "and either place Most-Recent-Cohorts-Institution.csv at data/ or",
+  );
+  console.error("set SCORECARD_CSV=/absolute/path/to/file.csv");
+  process.exit(1);
+}
+
 async function run(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error(
-      "Missing env vars. Need NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.",
-    );
-    process.exit(1);
-  }
+  const csvPath = resolveCsvPath();
+  console.log(`Source: ${csvPath}`);
+  console.log(DRY_RUN ? "Mode: DRY RUN (no DB writes)\n" : "Mode: LIVE LOAD\n");
 
-  if (!fs.existsSync(CSV_PATH)) {
-    console.error(`Scorecard CSV not found at ${CSV_PATH}.`);
-    console.error(
-      'Download "Most Recent Data" from https://collegescorecard.ed.gov/data/, unzip, and place MERGEDxxxx_xx_PP.csv at data/scorecard.csv.',
-    );
-    process.exit(1);
+  let supabase: SupabaseClient | null = null;
+  if (!DRY_RUN) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      console.error(
+        "Missing env vars. Need NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.\n" +
+          "(Use --dry-run to profile without env vars.)",
+      );
+      process.exit(1);
+    }
+    supabase = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
-
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   let read = 0;
   let kept = 0;
   let uploaded = 0;
   let buffer: College[] = [];
 
-  const stream = fs.createReadStream(CSV_PATH).pipe(csv());
+  // Track how many records have each field populated, for the dry-run report.
+  const populated: Record<keyof College, number> = Object.create(null);
+
+  const stream = fs.createReadStream(csvPath).pipe(csv());
 
   async function flush(): Promise<void> {
     if (buffer.length === 0) return;
     const batch = buffer;
     buffer = [];
-    await upsertBatch(supabase, batch);
-    uploaded += batch.length;
+    if (supabase) {
+      await upsertBatch(supabase, batch);
+      uploaded += batch.length;
+    }
     process.stdout.write(
-      `\r  read ${read.toLocaleString()} • kept ${kept.toLocaleString()} • uploaded ${uploaded.toLocaleString()}`,
+      `\r  read ${read.toLocaleString()} • kept ${kept.toLocaleString()}` +
+        (supabase ? ` • uploaded ${uploaded.toLocaleString()}` : ""),
     );
   }
 
-  console.log(`Reading ${CSV_PATH}...`);
   await new Promise<void>((resolve, reject) => {
     stream.on("data", (row: Row) => {
       read++;
       const college = transform(row);
       if (!college) return;
       kept++;
+      for (const key of Object.keys(college) as (keyof College)[]) {
+        if (college[key] !== null) populated[key] = (populated[key] ?? 0) + 1;
+      }
       buffer.push(college);
 
       if (buffer.length >= BATCH_SIZE) {
@@ -185,10 +247,48 @@ async function run(): Promise<void> {
     stream.on("error", reject);
   });
 
-  process.stdout.write("\n");
+  process.stdout.write("\n\n");
   console.log(
-    `Done. Read ${read.toLocaleString()} rows, uploaded ${uploaded.toLocaleString()}.`,
+    `Read ${read.toLocaleString()} rows. Kept ${kept.toLocaleString()} after transform.`,
   );
+  if (supabase) {
+    console.log(`Uploaded ${uploaded.toLocaleString()} to Supabase.`);
+  }
+
+  // Populated-counts report
+  console.log("\nPopulated counts per field:");
+  console.log("─".repeat(56));
+  const denominator = kept || 1;
+  const rows = Object.entries(populated)
+    .map(([field, count]) => ({
+      field,
+      count,
+      pct: (count / denominator) * 100,
+    }))
+    .sort((a, b) => b.pct - a.pct);
+
+  const fieldWidth = Math.max(...rows.map((r) => r.field.length));
+  for (const r of rows) {
+    const bar = "█".repeat(Math.round(r.pct / 5));
+    console.log(
+      `  ${r.field.padEnd(fieldWidth)}  ${r.pct.toFixed(1).padStart(5)}%  ${r.count.toLocaleString().padStart(6)} / ${kept.toLocaleString()}  ${bar}`,
+    );
+  }
+
+  // Per-field gaps surface anything dropped during transform
+  const missing = (
+    [
+      "unit_id",
+      "name",
+      "city",
+      "state",
+    ] as (keyof College)[]
+  ).filter((k) => (populated[k] ?? 0) < kept);
+  if (missing.length > 0) {
+    console.log(
+      `\n  Warning — these required-ish fields had nulls in some rows: ${missing.join(", ")}`,
+    );
+  }
 }
 
 run().catch((err) => {
