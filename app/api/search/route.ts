@@ -5,15 +5,22 @@ import { createSlug } from "@/lib/formatters";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// PostgREST embedded join: institutions → costs by unit_id PK
+// PostgREST embedded join: institutions → costs + outcomes by unit_id PK
 const COLUMNS =
-  "unit_id, name, city, state, control, costs(net_price_public, net_price_private)";
+  "unit_id, name, city, state, control, " +
+  "costs(net_price_public, net_price_private), " +
+  "outcomes(median_earnings_10yr, earnings_null_reason)";
 
 const MAX_RESULTS = 8;
 
 type CostsRow = {
   net_price_public: number | null;
   net_price_private: number | null;
+};
+
+type OutcomesRow = {
+  median_earnings_10yr: number | null;
+  earnings_null_reason: string | null;
 };
 
 type InstitutionRow = {
@@ -23,6 +30,7 @@ type InstitutionRow = {
   state: string | null;
   control: 1 | 2 | 3 | null;
   costs: CostsRow | CostsRow[] | null;
+  outcomes: OutcomesRow | OutcomesRow[] | null;
 };
 
 type SearchHit = {
@@ -41,6 +49,7 @@ function toHit(row: InstitutionRow): SearchHit {
   // Embedded one-to-one joins can come back as either {} or [{}] depending on
   // how PostgREST infers cardinality — handle both shapes.
   const costs = Array.isArray(row.costs) ? row.costs[0] : row.costs;
+  const outcomes = Array.isArray(row.outcomes) ? row.outcomes[0] : row.outcomes;
   const netPrice =
     costs?.net_price_public ?? costs?.net_price_private ?? null;
   return {
@@ -50,8 +59,8 @@ function toHit(row: InstitutionRow): SearchHit {
     state: row.state,
     control: row.control,
     net_price: netPrice,
-    salary_10yr: null,
-    salary_null_reason: "not_reported",
+    salary_10yr: outcomes?.median_earnings_10yr ?? null,
+    salary_null_reason: outcomes?.earnings_null_reason ?? null,
     slug: createSlug(row.name),
   };
 }
@@ -90,7 +99,7 @@ export async function GET(request: Request) {
     );
   }
 
-  for (const row of (fts.data ?? []) as InstitutionRow[]) {
+  for (const row of (fts.data ?? []) as unknown as InstitutionRow[]) {
     if (seen.has(row.unit_id)) continue;
     seen.add(row.unit_id);
     hits.push(toHit(row));
@@ -112,7 +121,7 @@ export async function GET(request: Request) {
       );
     }
 
-    for (const row of (fallback.data ?? []) as InstitutionRow[]) {
+    for (const row of (fallback.data ?? []) as unknown as InstitutionRow[]) {
       if (seen.has(row.unit_id)) continue;
       seen.add(row.unit_id);
       hits.push(toHit(row));

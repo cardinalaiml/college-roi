@@ -4,13 +4,14 @@ import { Badge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ROICalculator } from "@/components/ROICalculator";
 import { getSupabaseAnon } from "@/lib/supabase/server";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatSalaryNull } from "@/lib/formatters";
 
 type Params = { slug: string };
 
 export const dynamic = "force-dynamic";
 
-// Embedded PostgREST join: institutions ← costs, debt (both 1:1 on unit_id)
+// Embedded PostgREST join: institutions ← costs, debt, outcomes
+// (all 1:1 on unit_id)
 const SELECT = `
   unit_id, name, city, state, control, accreditor, url, undergrad_size,
   predominant_degree, institution_level,
@@ -23,6 +24,11 @@ const SELECT = `
   debt (
     median_debt_completers, monthly_payment_completers_10yr,
     pct_with_federal_loan
+  ),
+  outcomes (
+    median_earnings_6yr, median_earnings_10yr,
+    earnings_pct25_10yr, earnings_pct75_10yr,
+    pct_earning_above_25k_10yr, earnings_null_reason
   )
 `;
 
@@ -44,6 +50,15 @@ type DebtRow = {
   pct_with_federal_loan: number | null;
 };
 
+type OutcomesRow = {
+  median_earnings_6yr: number | null;
+  median_earnings_10yr: number | null;
+  earnings_pct25_10yr: number | null;
+  earnings_pct75_10yr: number | null;
+  pct_earning_above_25k_10yr: number | null;
+  earnings_null_reason: string | null;
+};
+
 type CollegeRow = {
   unit_id: number;
   name: string;
@@ -57,6 +72,7 @@ type CollegeRow = {
   institution_level: number | null;
   costs: CostsRow | CostsRow[] | null;
   debt: DebtRow | DebtRow[] | null;
+  outcomes: OutcomesRow | OutcomesRow[] | null;
 };
 
 function unitIdFromSlug(slug: string): number | null {
@@ -137,8 +153,22 @@ export default async function CollegePage({ params }: { params: Params }) {
 
   const costs = oneOrFirst(college.costs);
   const debt = oneOrFirst(college.debt);
+  const outcomes = oneOrFirst(college.outcomes);
   const np = netPrice(college);
   const coa = costOfAttendance(college);
+
+  // Salary display: prefer 10-year median; fall back to 6-year; otherwise
+  // surface a suppression / not-reported message and keep the calculator
+  // unfilled.
+  const salaryValue =
+    outcomes?.median_earnings_10yr ?? outcomes?.median_earnings_6yr ?? null;
+  const salaryIsTenYear = outcomes?.median_earnings_10yr != null;
+  const salaryNullMessage =
+    salaryValue !== null
+      ? salaryIsTenYear
+        ? ""
+        : "Showing 6-year median; 10-year salary not yet reported."
+      : formatSalaryNull(outcomes?.earnings_null_reason ?? null);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -180,9 +210,9 @@ export default async function CollegePage({ params }: { params: Params }) {
           nullMessage="Net price data is not available for this school."
         />
         <MetricCard
-          label="Cost of Attendance"
-          value={coa !== null ? formatCurrency(coa) : null}
-          nullMessage="Cost of attendance not reported."
+          label={salaryIsTenYear ? "Median Salary, 10 Years Out" : "Median Salary, 6 Years Out"}
+          value={salaryValue !== null ? formatCurrency(salaryValue) : null}
+          nullMessage={salaryNullMessage}
         />
         <MetricCard
           label="Median Debt at Graduation"
@@ -234,7 +264,7 @@ export default async function CollegePage({ params }: { params: Params }) {
       )}
 
       <div className="mt-8">
-        <ROICalculator defaultCost={np} defaultSalary={null} />
+        <ROICalculator defaultCost={np} defaultSalary={salaryValue} />
       </div>
     </div>
   );

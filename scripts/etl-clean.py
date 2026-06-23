@@ -115,6 +115,31 @@ COST_COLS: dict[str, str] = {
     "NPT45_PRIV":        "net_price_private_110k_plus",
 }
 
+OUTCOMES_COLS: dict[str, str] = {
+    "UNITID":            "unit_id",
+    # median earnings (working not enrolled cohort)
+    "MD_EARN_WNE_P6":    "median_earnings_6yr",
+    "MD_EARN_WNE_P10":   "median_earnings_10yr",
+    # mean earnings (working not enrolled cohort)
+    "MN_EARN_WNE_P6":    "mean_earnings_6yr",
+    "MN_EARN_WNE_P10":   "mean_earnings_10yr",
+    # 10-year distribution
+    "PCT10_EARN_WNE_P10": "earnings_pct10_10yr",
+    "PCT25_EARN_WNE_P10": "earnings_pct25_10yr",
+    "PCT75_EARN_WNE_P10": "earnings_pct75_10yr",
+    "PCT90_EARN_WNE_P10": "earnings_pct90_10yr",
+    # thresholded outcomes
+    "GT_25K_P10":        "pct_earning_above_25k_10yr",
+    "GT_THRESHOLD_P10":  "pct_earning_above_threshold_10yr",
+}
+
+# MD_EARN_WNE_P10's raw string distinguishes "PrivacySuppressed" (a small
+# enough graduating cohort that the figure was withheld) from missing /
+# not reported. We need that distinction for the UI's null message — so
+# we read it from a separate pass that *doesn't* coerce na_values.
+SUPPRESSION_DRIVER = "MD_EARN_WNE_P10"
+
+
 DEBT_COLS: dict[str, str] = {
     "UNITID":               "unit_id",
     # median debt
@@ -167,6 +192,12 @@ MONEY_COLS_DEBT = {
     or name == "monthly_payment_completers_10yr"
     or name == "median_plus_debt"
 }
+MONEY_COLS_OUTCOMES = {
+    name for raw, name in OUTCOMES_COLS.items()
+    if name.startswith("median_earnings")
+    or name.startswith("mean_earnings")
+    or name.startswith("earnings_pct")
+}
 INT_COLS_INSTITUTION = {
     "unit_id", "control", "predominant_degree", "highest_degree",
     "institution_level", "region", "locale", "undergrad_size",
@@ -207,6 +238,7 @@ def load_raw(path: Path) -> pd.DataFrame:
         set(INSTITUTION_COLS)
         | set(COST_COLS)
         | set(DEBT_COLS)
+        | set(OUTCOMES_COLS)
     )
     df = pd.read_csv(
         path,
@@ -218,6 +250,33 @@ def load_raw(path: Path) -> pd.DataFrame:
     )
     print(f"  read {len(df):,} rows × {len(df.columns):,} cols")
     return df
+
+
+def load_suppression_signal(path: Path) -> pd.DataFrame:
+    """
+    Second pass over just UNITID + MD_EARN_WNE_P10 that *doesn't*
+    coerce na_values. Lets us tell apart "PrivacySuppressed" rows
+    (suppressed for cohort size) from rows where the column is
+    plain empty / NULL (not reported at all).
+    """
+    df = pd.read_csv(
+        path,
+        usecols=["UNITID", SUPPRESSION_DRIVER],
+        keep_default_na=False,
+        na_values=[],
+        dtype=str,
+    )
+
+    def reason(raw: str) -> str | None:
+        if raw == "PrivacySuppressed":
+            return "suppressed"
+        if raw == "" or raw in ("NULL", "NA", "PS"):
+            return "not_reported"
+        return None  # value present
+
+    df["earnings_null_reason"] = df[SUPPRESSION_DRIVER].apply(reason)
+    df["UNITID"] = pd.to_numeric(df["UNITID"], errors="coerce").astype("Int64")
+    return df[["UNITID", "earnings_null_reason"]]
 
 
 def dedupe(df: pd.DataFrame, key: str = "UNITID") -> pd.DataFrame:
@@ -321,27 +380,49 @@ def main() -> None:
         float_cols=OUTPUT_FLOAT_FRACTION,
     )
 
+    # outcomes: project + coerce, then merge in the suppression sentinel
+    # from the un-coerced read
+    outcomes = build_table(
+        raw,
+        OUTCOMES_COLS,
+        money_cols=MONEY_COLS_OUTCOMES,
+        int_cols={"unit_id"},
+        float_cols={
+            "pct_earning_above_25k_10yr",
+            "pct_earning_above_threshold_10yr",
+        },
+    )
+    suppression = load_suppression_signal(src)
+    outcomes = outcomes.merge(
+        suppression, left_on="unit_id", right_on="UNITID", how="left",
+    ).drop(columns=["UNITID"])
+
     # institutions.csv should be the join authority — every other
     # table must point back at a row here
     assert institutions["unit_id"].is_unique, "institution unit_id not unique"
     assert costs["unit_id"].is_unique, "cost unit_id not unique"
     assert debt["unit_id"].is_unique, "debt unit_id not unique"
+    assert outcomes["unit_id"].is_unique, "outcomes unit_id not unique"
 
     out_institutions = OUT_DIR / "institutions.csv"
     out_costs = OUT_DIR / "costs.csv"
     out_debt = OUT_DIR / "debt.csv"
+    out_outcomes = OUT_DIR / "outcomes.csv"
 
     institutions.to_csv(out_institutions, index=False)
     costs.to_csv(out_costs, index=False)
     debt.to_csv(out_debt, index=False)
+    outcomes.to_csv(out_outcomes, index=False)
 
     print(f"\nWrote {out_institutions.relative_to(PROJECT_ROOT)}")
     print(f"Wrote {out_costs.relative_to(PROJECT_ROOT)}")
     print(f"Wrote {out_debt.relative_to(PROJECT_ROOT)}")
+    print(f"Wrote {out_outcomes.relative_to(PROJECT_ROOT)}")
 
     summarize("institutions.csv", institutions)
     summarize("costs.csv", costs)
     summarize("debt.csv", debt)
+    summarize("outcomes.csv", outcomes)
 
 
 if __name__ == "__main__":

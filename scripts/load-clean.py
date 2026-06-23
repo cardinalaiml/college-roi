@@ -45,6 +45,7 @@ TABLES: list[tuple[str, Path]] = [
     ("institutions", CLEAN_DIR / "institutions.csv"),
     ("costs",        CLEAN_DIR / "costs.csv"),
     ("debt",         CLEAN_DIR / "debt.csv"),
+    ("outcomes",     CLEAN_DIR / "outcomes.csv"),
 ]
 
 load_dotenv(PROJECT_ROOT / ".env.local")

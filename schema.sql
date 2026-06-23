@@ -9,6 +9,7 @@ create extension if not exists pg_trgm;
 drop table if exists roi_cache cascade;
 drop table if exists comparisons cascade;
 drop table if exists colleges cascade;
+drop table if exists outcomes cascade;
 drop table if exists debt cascade;
 drop table if exists costs cascade;
 drop table if exists institutions cascade;
@@ -224,6 +225,25 @@ create table debt (
 
 create index debt_median_completers_idx on debt (median_debt_completers);
 
+create table outcomes (
+  unit_id integer primary key references institutions(unit_id) on delete cascade,
+  median_earnings_6yr integer,                      -- MD_EARN_WNE_P6
+  median_earnings_10yr integer,                     -- MD_EARN_WNE_P10
+  mean_earnings_6yr integer,                        -- MN_EARN_WNE_P6
+  mean_earnings_10yr integer,                       -- MN_EARN_WNE_P10
+  earnings_pct10_10yr integer,                      -- PCT10_EARN_WNE_P10
+  earnings_pct25_10yr integer,                      -- PCT25_EARN_WNE_P10
+  earnings_pct75_10yr integer,                      -- PCT75_EARN_WNE_P10
+  earnings_pct90_10yr integer,                      -- PCT90_EARN_WNE_P10
+  pct_earning_above_25k_10yr real,                  -- GT_25K_P10 (fraction 0..1)
+  pct_earning_above_threshold_10yr real,            -- GT_THRESHOLD_P10 (vs HS-grad median)
+  earnings_null_reason text                         -- 'suppressed' | 'not_reported' | null when present
+    check (earnings_null_reason in ('suppressed', 'not_reported') or earnings_null_reason is null),
+  updated_at timestamptz not null default now()
+);
+
+create index outcomes_median_10yr_idx on outcomes (median_earnings_10yr);
+
 -- ============================================================
 -- Row-level security
 -- ============================================================
@@ -241,6 +261,10 @@ create policy "costs public read" on costs
 
 alter table debt enable row level security;
 create policy "debt public read" on debt
+  for select to anon, authenticated using (true);
+
+alter table outcomes enable row level security;
+create policy "outcomes public read" on outcomes
   for select to anon, authenticated using (true);
 
 alter table comparisons enable row level security;
