@@ -79,19 +79,24 @@ def records(df: pd.DataFrame) -> list[dict]:
     rows: list[dict] = safe.to_dict(orient="records")
 
     # to_dict can leave numpy scalars in place — coerce to plain ints/floats
-    # so the JSON encoder is happy.
+    # so the JSON encoder is happy. Whole-number floats like 1.0 also get
+    # narrowed to int — Postgres smallint/integer columns reject "1.0".
     for row in rows:
         for k, v in row.items():
             if v is None:
                 continue
             if isinstance(v, float) and math.isnan(v):
                 row[k] = None
-            elif hasattr(v, "item"):
+                continue
+            if hasattr(v, "item"):
                 # numpy / pandas scalars expose .item() for native types
                 try:
-                    row[k] = v.item()
+                    v = v.item()
+                    row[k] = v
                 except (TypeError, ValueError):
-                    pass
+                    continue
+            if isinstance(v, float) and v.is_integer():
+                row[k] = int(v)
     return rows
 
 
