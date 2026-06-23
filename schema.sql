@@ -9,6 +9,9 @@ create extension if not exists pg_trgm;
 drop table if exists roi_cache cascade;
 drop table if exists comparisons cascade;
 drop table if exists colleges cascade;
+drop table if exists debt cascade;
+drop table if exists costs cascade;
+drop table if exists institutions cascade;
 
 -- ============================================================
 -- colleges: one row per IPEDS institution
@@ -114,10 +117,130 @@ create table roi_cache (
 create index roi_cache_lookup_idx on roi_cache (college_id, input_hash, expires_at);
 
 -- ============================================================
+-- institutions / costs / debt — normalized 3-table model loaded by
+-- scripts/etl-clean.py + scripts/load-clean.py. Mirrors the CSVs at
+-- data/clean/{institutions,costs,debt}.csv and shares unit_id as
+-- the join key. Lives alongside the flat colleges table so the
+-- existing /api/search keeps working until it's migrated.
+-- ============================================================
+
+create table institutions (
+  unit_id integer primary key,                      -- IPEDS UNITID
+  name text not null,                               -- INSTNM
+  city text,                                        -- CITY
+  state text,                                       -- STABBR
+  zip text,                                         -- ZIP
+  control smallint,                                 -- 1=public, 2=private nonprofit, 3=for-profit
+  predominant_degree smallint,                      -- 0..4 (PREDDEG)
+  highest_degree smallint,                          -- 0..4 (HIGHDEG)
+  institution_level smallint,                       -- 1=4yr, 2=2yr, 3=<2yr (ICLEVEL)
+  region smallint,                                  -- IPEDS region
+  locale smallint,                                  -- urbanicity code
+  accreditor text,                                  -- ACCREDAGENCY
+  url text,                                         -- INSTURL
+  latitude double precision,
+  longitude double precision,
+  undergrad_size integer,                           -- UGDS
+  is_hbcu smallint,                                 -- 0/1
+  is_hispanic_serving smallint,                     -- 0/1
+  is_tribal smallint,                               -- 0/1
+  is_women_only smallint,                           -- 0/1
+  is_men_only smallint,                             -- 0/1
+  is_operating smallint,                            -- 0=closed, 1=operating
+  search_vector tsvector generated always as (
+    setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(city, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(state, '')), 'C')
+  ) stored,
+  updated_at timestamptz not null default now()
+);
+
+create index institutions_search_vector_idx on institutions using gin (search_vector);
+create index institutions_name_trgm_idx     on institutions using gin (name gin_trgm_ops);
+create index institutions_state_idx         on institutions (state);
+create index institutions_control_idx       on institutions (control);
+
+create table costs (
+  unit_id integer primary key references institutions(unit_id) on delete cascade,
+  tuition_in_state integer,
+  tuition_out_state integer,
+  tuition_program_year integer,
+  tuition_revenue_per_fte real,
+  books_supplies integer,
+  room_board_on_campus integer,
+  room_board_off_campus integer,
+  other_expense_on_campus integer,
+  other_expense_off_campus integer,
+  other_expense_with_family integer,
+  cost_of_attendance_academic_year integer,
+  cost_of_attendance_program_year integer,
+  net_price_public integer,
+  net_price_private integer,
+  net_price_program_year integer,
+  net_price_public_0_30k integer,
+  net_price_public_30k_48k integer,
+  net_price_public_48k_75k integer,
+  net_price_public_75k_110k integer,
+  net_price_public_110k_plus integer,
+  net_price_private_0_30k integer,
+  net_price_private_30k_48k integer,
+  net_price_private_48k_75k integer,
+  net_price_private_75k_110k integer,
+  net_price_private_110k_plus integer,
+  updated_at timestamptz not null default now()
+);
+
+create index costs_net_price_public_idx  on costs (net_price_public);
+create index costs_net_price_private_idx on costs (net_price_private);
+
+create table debt (
+  unit_id integer primary key references institutions(unit_id) on delete cascade,
+  median_debt_all integer,
+  median_debt_completers integer,
+  median_debt_withdrawn integer,
+  monthly_payment_completers_10yr integer,
+  median_debt_low_income integer,
+  median_debt_middle_income integer,
+  median_debt_high_income integer,
+  median_debt_dependent integer,
+  median_debt_independent integer,
+  median_debt_pell integer,
+  median_debt_no_pell integer,
+  median_debt_female integer,
+  median_debt_male integer,
+  median_debt_first_gen integer,
+  median_debt_not_first_gen integer,
+  cumulative_debt_p90 integer,
+  cumulative_debt_p75 integer,
+  cumulative_debt_p25 integer,
+  cumulative_debt_p10 integer,
+  median_plus_debt integer,
+  pct_with_federal_loan real,
+  pct_with_federal_loan_degree_seeking real,
+  pct_parent_plus_low real,
+  pct_parent_plus_high real,
+  updated_at timestamptz not null default now()
+);
+
+create index debt_median_completers_idx on debt (median_debt_completers);
+
+-- ============================================================
 -- Row-level security
 -- ============================================================
 alter table colleges enable row level security;
 create policy "colleges public read" on colleges
+  for select to anon, authenticated using (true);
+
+alter table institutions enable row level security;
+create policy "institutions public read" on institutions
+  for select to anon, authenticated using (true);
+
+alter table costs enable row level security;
+create policy "costs public read" on costs
+  for select to anon, authenticated using (true);
+
+alter table debt enable row level security;
+create policy "debt public read" on debt
   for select to anon, authenticated using (true);
 
 alter table comparisons enable row level security;

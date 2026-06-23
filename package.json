@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "etl": "tsx scripts/etl-scorecard.ts",
+    "etl:clean": "python3 scripts/etl-clean.py",
+    "load:clean": "python3 scripts/load-clean.py",
     "test:roi": "tsx lib/roi-calculator.test.ts"
   },
   "dependencies": {
