@@ -5,13 +5,27 @@ import { createSlug } from "@/lib/formatters";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// PostgREST embedded join: institutions → costs by unit_id PK
 const COLUMNS =
-  "id, unit_id, name, city, state, control, net_price, salary_10yr, salary_null_reason";
+  "unit_id, name, city, state, control, costs(net_price_public, net_price_private)";
 
 const MAX_RESULTS = 8;
 
-type CollegeRow = {
-  id: number;
+type CostsRow = {
+  net_price_public: number | null;
+  net_price_private: number | null;
+};
+
+type InstitutionRow = {
+  unit_id: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  control: 1 | 2 | 3 | null;
+  costs: CostsRow | CostsRow[] | null;
+};
+
+type SearchHit = {
   unit_id: number;
   name: string;
   city: string | null;
@@ -20,9 +34,27 @@ type CollegeRow = {
   net_price: number | null;
   salary_10yr: number | null;
   salary_null_reason: string | null;
+  slug: string;
 };
 
-type SearchHit = CollegeRow & { slug: string };
+function toHit(row: InstitutionRow): SearchHit {
+  // Embedded one-to-one joins can come back as either {} or [{}] depending on
+  // how PostgREST infers cardinality — handle both shapes.
+  const costs = Array.isArray(row.costs) ? row.costs[0] : row.costs;
+  const netPrice =
+    costs?.net_price_public ?? costs?.net_price_private ?? null;
+  return {
+    unit_id: row.unit_id,
+    name: row.name,
+    city: row.city,
+    state: row.state,
+    control: row.control,
+    net_price: netPrice,
+    salary_10yr: null,
+    salary_null_reason: "not_reported",
+    slug: createSlug(row.name),
+  };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,7 +78,7 @@ export async function GET(request: Request) {
   const hits: SearchHit[] = [];
 
   const fts = await supabase
-    .from("colleges")
+    .from("institutions")
     .select(COLUMNS)
     .textSearch("search_vector", q, { type: "websearch", config: "english" })
     .limit(MAX_RESULTS);
@@ -58,17 +90,17 @@ export async function GET(request: Request) {
     );
   }
 
-  for (const row of (fts.data ?? []) as CollegeRow[]) {
+  for (const row of (fts.data ?? []) as InstitutionRow[]) {
     if (seen.has(row.unit_id)) continue;
     seen.add(row.unit_id);
-    hits.push({ ...row, slug: createSlug(row.name) });
+    hits.push(toHit(row));
     if (hits.length >= MAX_RESULTS) break;
   }
 
   if (hits.length < MAX_RESULTS) {
     const safe = q.replace(/[%_]/g, (m) => `\\${m}`);
     const fallback = await supabase
-      .from("colleges")
+      .from("institutions")
       .select(COLUMNS)
       .ilike("name", `%${safe}%`)
       .limit(MAX_RESULTS);
@@ -80,10 +112,10 @@ export async function GET(request: Request) {
       );
     }
 
-    for (const row of (fallback.data ?? []) as CollegeRow[]) {
+    for (const row of (fallback.data ?? []) as InstitutionRow[]) {
       if (seen.has(row.unit_id)) continue;
       seen.add(row.unit_id);
-      hits.push({ ...row, slug: createSlug(row.name) });
+      hits.push(toHit(row));
       if (hits.length >= MAX_RESULTS) break;
     }
   }
