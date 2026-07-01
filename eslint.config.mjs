@@ -5,9 +5,17 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+  {
+    // eslint-config-next@16 ships React-19 style rules. This project
+    // is pinned to React 18 (see package.json) — the "setState in
+    // useEffect on prop change" and "read external store in
+    // useEffect" patterns flagged below are still idiomatic there.
+    // Revisit if/when the app moves to React 19 + useSyncExternalStore.
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",

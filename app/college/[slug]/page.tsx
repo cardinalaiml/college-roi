@@ -113,15 +113,6 @@ function netPrice(row: CollegeRow): number | null {
   return c?.net_price_public ?? c?.net_price_private ?? null;
 }
 
-function costOfAttendance(row: CollegeRow): number | null {
-  const c = oneOrFirst(row.costs);
-  return (
-    c?.cost_of_attendance_academic_year ??
-    c?.cost_of_attendance_program_year ??
-    null
-  );
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -156,7 +147,6 @@ export default async function CollegePage({ params }: { params: Params }) {
   const debt = oneOrFirst(college.debt);
   const outcomes = oneOrFirst(college.outcomes);
   const np = netPrice(college);
-  const coa = costOfAttendance(college);
 
   // Salary display: prefer 10-year median; fall back to 6-year; otherwise
   // surface a suppression / not-reported message and keep the calculator
