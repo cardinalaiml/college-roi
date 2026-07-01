@@ -11,12 +11,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AISummary } from "./AISummary";
 import { calculateROI } from "@/lib/roi-calculator";
 import { formatCurrency } from "@/lib/formatters";
 
 type Props = {
   defaultCost: number | null;
   defaultSalary: number | null;
+  // When present, the AI verdict section renders below the outputs
+  // and calls /api/ai-summary keyed on this college.
+  college?: { unitId: number; name: string };
 };
 
 const LOAN_TERMS = [
@@ -25,7 +29,7 @@ const LOAN_TERMS = [
   { value: 25, label: "25 years" },
 ];
 
-export function ROICalculator({ defaultCost, defaultSalary }: Props) {
+export function ROICalculator({ defaultCost, defaultSalary, college }: Props) {
   const [totalCost, setTotalCost] = useState<number>(
     defaultCost !== null ? defaultCost * 4 : 0,
   );
@@ -205,6 +209,23 @@ export function ROICalculator({ defaultCost, defaultSalary }: Props) {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {college && (
+            <AISummary
+              collegeId={college.unitId}
+              collegeName={college.name}
+              calcInputs={{
+                totalCost,
+                expectedSalary,
+                currentSalary,
+                interestRate,
+                loanTerm,
+                monthlyPayment: result.monthlyPayment,
+                breakEvenYear: result.breakEvenYear,
+                twentyYearGain: result.twentyYearGain,
+              }}
+            />
+          )}
         </>
       )}
     </section>

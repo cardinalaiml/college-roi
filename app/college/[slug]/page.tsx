@@ -272,7 +272,11 @@ export default async function CollegePage({ params }: { params: Params }) {
       )}
 
       <div className="mt-8">
-        <ROICalculator defaultCost={np} defaultSalary={salaryValue} />
+        <ROICalculator
+          defaultCost={np}
+          defaultSalary={salaryValue}
+          college={{ unitId: college.unit_id, name: college.name }}
+        />
       </div>
     </div>
   );
