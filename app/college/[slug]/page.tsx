@@ -20,7 +20,9 @@ const SELECT = `
     net_price_public, net_price_private,
     cost_of_attendance_academic_year, cost_of_attendance_program_year,
     tuition_in_state, tuition_out_state,
-    books_supplies, room_board_on_campus, room_board_off_campus
+    books_supplies,
+    room_board_on_campus, room_board_off_campus,
+    other_expense_on_campus, other_expense_off_campus
   ),
   debt (
     median_debt_completers, monthly_payment_completers_10yr,
@@ -43,6 +45,8 @@ type CostsRow = {
   books_supplies: number | null;
   room_board_on_campus: number | null;
   room_board_off_campus: number | null;
+  other_expense_on_campus: number | null;
+  other_expense_off_campus: number | null;
 };
 
 type DebtRow = {
@@ -258,6 +262,28 @@ export default async function CollegePage({ params }: { params: Params }) {
               </div>
             )}
           </dl>
+
+          {(() => {
+            const inStateFour = fourYearTotal(costs, "in");
+            const outStateFour = fourYearTotal(costs, "out");
+            if (inStateFour == null && outStateFour == null) return null;
+            return (
+              <div className="mt-5 grid gap-3 border-t border-brand-green-100 pt-5 sm:grid-cols-2">
+                <FourYearTotal
+                  label="In-state 4-year total"
+                  value={inStateFour}
+                />
+                <FourYearTotal
+                  label="Out-of-state 4-year total"
+                  value={outStateFour}
+                />
+              </div>
+            );
+          })()}
+          <p className="mt-3 text-xs italic text-brand-gray-500">
+            4-year totals sum tuition, books, room &amp; board, and other
+            expenses over four consecutive years. Actual costs rise ~3–5%/year.
+          </p>
         </section>
       )}
 
@@ -287,4 +313,56 @@ function CostRow({ label, value }: { label: string; value: number | null | undef
       </dd>
     </div>
   );
+}
+
+function FourYearTotal({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null;
+}) {
+  return (
+    <div className="rounded-lg bg-brand-green-50 p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-brand-green-700">
+        {label}
+      </div>
+      <div className="mt-1 text-2xl font-bold text-brand-green-700">
+        {value !== null ? formatCurrency(value) : (
+          <span className="text-sm font-normal italic text-brand-gray-500">
+            Tuition not reported
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Sum tuition + books + housing + other into an annual, then × 4.
+// Prefers on-campus housing; falls back to off-campus. Returns null
+// if the tuition side is missing (without it the total is meaningless).
+function fourYearTotal(
+  costs: {
+    tuition_in_state?: number | null;
+    tuition_out_state?: number | null;
+    books_supplies?: number | null;
+    room_board_on_campus?: number | null;
+    room_board_off_campus?: number | null;
+    other_expense_on_campus?: number | null;
+    other_expense_off_campus?: number | null;
+  } | null | undefined,
+  which: "in" | "out",
+): number | null {
+  if (!costs) return null;
+  const tuition = which === "in" ? costs.tuition_in_state : costs.tuition_out_state;
+  if (tuition == null) return null;
+
+  const roomBoard =
+    costs.room_board_on_campus ?? costs.room_board_off_campus ?? 0;
+  const otherExpense =
+    costs.other_expense_on_campus ?? costs.other_expense_off_campus ?? 0;
+  const books = costs.books_supplies ?? 0;
+
+  const annual = tuition + books + roomBoard + otherExpense;
+  return annual * 4;
 }
