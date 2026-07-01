@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Header } from "@/components/Header";
+import { ComparisonTray } from "@/components/ComparisonTray";
 import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tasselcost.com"),
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <ComparisonTray />
       </body>
     </html>
   );

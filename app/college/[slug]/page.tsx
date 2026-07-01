@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AddToComparison } from "@/components/AddToComparison";
 import { Badge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ROICalculator } from "@/components/ROICalculator";
 import { getSupabaseAnon } from "@/lib/supabase/server";
-import { formatCurrency, formatPercent, formatSalaryNull } from "@/lib/formatters";
+import { createSlug, formatCurrency, formatPercent, formatSalaryNull } from "@/lib/formatters";
 
 type Params = { slug: string };
 
@@ -171,11 +172,18 @@ export default async function CollegePage({ params }: { params: Params }) {
       : formatSalaryNull(outcomes?.earnings_null_reason ?? null);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 pb-32">
       <header>
-        <h1 className="text-3xl font-bold text-brand-green-700">
-          {college.name}
-        </h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-3xl font-bold text-brand-green-700">
+            {college.name}
+          </h1>
+          <AddToComparison
+            unitId={college.unit_id}
+            name={college.name}
+            slug={createSlug(college.name)}
+          />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-brand-gray-500">
           {college.city && college.state && (
             <>
