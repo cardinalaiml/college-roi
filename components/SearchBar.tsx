@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type Size = "header" | "hero";
@@ -24,7 +24,7 @@ export function SearchBar({
   autoFocus = false,
 }: Props) {
   const router = useRouter();
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [value, setValue] = useState(defaultValue);
   const [focused, setFocused] = useState(false);
   const lastPushed = useRef(defaultValue);
@@ -37,15 +37,15 @@ export function SearchBar({
   function pushQuery(next: string) {
     if (next === lastPushed.current) return;
     lastPushed.current = next;
-    const target =
-      pathname === "/" || pathname === ""
-        ? next
-          ? `/?q=${encodeURIComponent(next)}`
-          : "/"
-        : next
-          ? `/?q=${encodeURIComponent(next)}`
-          : "/";
-    router.replace(target, { scroll: false });
+    // Carry active filter params (state/type/price) along with the query.
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) {
+      params.set("q", next);
+    } else {
+      params.delete("q");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
   }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {

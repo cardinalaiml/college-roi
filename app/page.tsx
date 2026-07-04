@@ -3,10 +3,19 @@ import { Hero } from "@/components/Hero";
 import { LoanCalculator } from "@/components/LoanCalculator";
 import { ROICalculator } from "@/components/ROICalculator";
 import { SearchBar } from "@/components/SearchBar";
+import {
+  SearchFilters,
+  type SearchFilterValues,
+} from "@/components/SearchFilters";
 import { SearchResults } from "@/components/SearchResults";
 import { EXAMPLE_COLLEGES } from "@/lib/example-colleges";
 
-type SearchParams = { q?: string };
+type SearchParams = {
+  q?: string;
+  state?: string;
+  type?: string;
+  price?: string;
+};
 
 export default function Home({
   searchParams,
@@ -14,15 +23,20 @@ export default function Home({
   searchParams: SearchParams;
 }) {
   const query = (searchParams.q ?? "").trim();
+  const filters: SearchFilterValues = {
+    state: searchParams.state ?? "",
+    type: searchParams.type ?? "",
+    price: searchParams.price ?? "",
+  };
 
   return (
     <>
       <Hero />
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-5 py-8 lg:py-10">
-        <SearchSection initialQuery={query} />
+        <SearchSection initialQuery={query} filters={filters} />
 
         {query ? (
-          <SearchResults query={query} />
+          <SearchResults query={query} filters={filters} />
         ) : (
           <>
             <ExampleCollegesSection />
@@ -37,7 +51,13 @@ export default function Home({
   );
 }
 
-function SearchSection({ initialQuery }: { initialQuery: string }) {
+function SearchSection({
+  initialQuery,
+  filters,
+}: {
+  initialQuery: string;
+  filters: SearchFilterValues;
+}) {
   return (
     <section className="rounded-2xl bg-white p-6 shadow-card">
       <h2 className="text-xl font-bold text-brand-green-700">
@@ -53,6 +73,9 @@ function SearchSection({ initialQuery }: { initialQuery: string }) {
           size="hero"
           placeholder="Type a college name (e.g., University of Virginia)..."
         />
+      </div>
+      <div className="mt-3">
+        <SearchFilters values={filters} />
       </div>
     </section>
   );

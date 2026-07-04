@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CollegeCard, type CollegeCardProps } from "./CollegeCard";
+import { EMPTY_FILTERS, type SearchFilterValues } from "./SearchFilters";
 
 type SearchHit = {
   id: number;
@@ -24,11 +25,19 @@ type FetchState =
 
 const DEBOUNCE_MS = 300;
 
-export function SearchResults({ query }: { query: string }) {
+export function SearchResults({
+  query,
+  filters = EMPTY_FILTERS,
+}: {
+  query: string;
+  filters?: SearchFilterValues;
+}) {
   const [state, setState] = useState<FetchState>(
     query ? { status: "loading" } : { status: "idle" },
   );
   const lastRequestId = useRef(0);
+  const { state: stateFilter, type: typeFilter, price: priceFilter } = filters;
+  const hasFilters = Boolean(stateFilter || typeFilter || priceFilter);
 
   useEffect(() => {
     if (!query) {
@@ -40,12 +49,16 @@ export function SearchResults({ query }: { query: string }) {
     const requestId = ++lastRequestId.current;
     const controller = new AbortController();
 
+    const params = new URLSearchParams({ q: query });
+    if (stateFilter) params.set("state", stateFilter);
+    if (typeFilter) params.set("type", typeFilter);
+    if (priceFilter) params.set("price", priceFilter);
+
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/search?q=${encodeURIComponent(query)}`,
-          { signal: controller.signal },
-        );
+        const res = await fetch(`/api/search?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (requestId !== lastRequestId.current) return;
         if (!res.ok) {
           setState({ status: "error" });
@@ -64,7 +77,7 @@ export function SearchResults({ query }: { query: string }) {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, stateFilter, typeFilter, priceFilter]);
 
   if (state.status === "idle") return null;
 
@@ -92,8 +105,17 @@ export function SearchResults({ query }: { query: string }) {
   if (state.hits.length === 0) {
     return (
       <p className="rounded-lg border border-brand-gray-200 bg-white p-4 text-sm text-brand-gray-500">
-        No colleges matched &ldquo;{query}&rdquo;. Try a partial name, city
-        name, or two-letter state abbreviation.
+        {hasFilters ? (
+          <>
+            No colleges matched &ldquo;{query}&rdquo; with the current filters.
+            Try clearing a filter or broadening the search.
+          </>
+        ) : (
+          <>
+            No colleges matched &ldquo;{query}&rdquo;. Try a partial name, city
+            name, or two-letter state abbreviation.
+          </>
+        )}
       </p>
     );
   }
