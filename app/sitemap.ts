@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getSupabaseAnon } from "@/lib/supabase/server";
 import { createSlug } from "@/lib/formatters";
+import { STATES } from "@/lib/states";
 
 const BASE_URL = "https://tasselcost.com";
 const PAGE_SIZE = 1000;
@@ -18,13 +19,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${BASE_URL}/colleges`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    ...STATES.map((state) => ({
+      url: `${BASE_URL}/colleges/${state.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
   ];
 
   let rows: Row[];
   try {
     rows = await fetchAllInstitutions();
   } catch {
-    // Supabase down or misconfigured: ship the homepage rather than a 500.
+    // Supabase down or misconfigured: ship the static routes rather than a 500.
     return home;
   }
 
