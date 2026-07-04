@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { fourYearTotal } from "@/lib/costs";
 import { getSupabaseAnon } from "@/lib/supabase/server";
 import {
   createSlug,
@@ -18,7 +19,8 @@ const COLLEGE_SELECT = `
   costs ( net_price_public, net_price_private,
           cost_of_attendance_academic_year,
           tuition_in_state, tuition_out_state,
-          books_supplies, room_board_on_campus, room_board_off_campus ),
+          books_supplies, room_board_on_campus, room_board_off_campus,
+          other_expense_on_campus, other_expense_off_campus ),
   debt  ( median_debt_completers, monthly_payment_completers_10yr,
           pct_with_federal_loan ),
   outcomes ( median_earnings_6yr, median_earnings_10yr,
@@ -41,6 +43,8 @@ type CollegeRow = {
         books_supplies: number | null;
         room_board_on_campus: number | null;
         room_board_off_campus: number | null;
+        other_expense_on_campus: number | null;
+        other_expense_off_campus: number | null;
       }
     | null;
   debt:
@@ -176,6 +180,22 @@ const ROWS: RowConfig[] = [
     lowerIsBetter: true,
     pull: (c) => {
       const v = oneOrFirst(c.costs)?.tuition_out_state ?? null;
+      return { value: v, display: v != null ? formatCurrency(v) : "—" };
+    },
+  },
+  {
+    label: "In-state 4-year total",
+    lowerIsBetter: true,
+    pull: (c) => {
+      const v = fourYearTotal(oneOrFirst(c.costs), "in");
+      return { value: v, display: v != null ? formatCurrency(v) : "—" };
+    },
+  },
+  {
+    label: "Out-of-state 4-year total",
+    lowerIsBetter: true,
+    pull: (c) => {
+      const v = fourYearTotal(oneOrFirst(c.costs), "out");
       return { value: v, display: v != null ? formatCurrency(v) : "—" };
     },
   },
