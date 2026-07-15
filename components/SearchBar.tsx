@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type Size = "header" | "hero";
@@ -24,6 +24,7 @@ export function SearchBar({
   autoFocus = false,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(defaultValue);
   const [focused, setFocused] = useState(false);
@@ -45,7 +46,14 @@ export function SearchBar({
       params.delete("q");
     }
     const qs = params.toString();
-    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+    const target = qs ? `/?${qs}` : "/";
+    // On the homepage, typing refines in place; from any other page the
+    // search navigates home, so keep that page in history for Back.
+    if (pathname === "/") {
+      router.replace(target, { scroll: false });
+    } else {
+      router.push(target, { scroll: false });
+    }
   }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -56,7 +57,23 @@ function buildUserPrompt(collegeName: string, calc: NonNullable<Body["calcInputs
   ].join(" ");
 }
 
+// 10 requests per IP per minute — this route is the only one that spends
+// money per call, so it gets the tightest limit.
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+
 export async function POST(request: Request) {
+  const limited = rateLimit(clientIp(request), RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again in a minute." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limited.retryAfterSec) },
+      },
+    );
+  }
+
   let body: Body;
   try {
     body = (await request.json()) as Body;

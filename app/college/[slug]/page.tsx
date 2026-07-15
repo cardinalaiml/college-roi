@@ -144,6 +144,36 @@ export async function generateMetadata({
   };
 }
 
+// Scorecard URLs often arrive bare ("www.mit.edu") — schema.org wants absolute.
+function absoluteUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function jsonLdFor(college: CollegeRow): Record<string, unknown> {
+  const site = absoluteUrl(college.url);
+  return {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    name: college.name,
+    ...(college.city && college.state
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: college.city,
+            addressRegion: college.state,
+          },
+        }
+      : {}),
+    ...(site ? { url: site } : {}),
+    ...(college.undergrad_size
+      ? { numberOfStudents: college.undergrad_size }
+      : {}),
+  };
+}
+
 export default async function CollegePage({ params }: { params: Params }) {
   const college = await loadCollege(params.slug);
   if (!college) notFound();
@@ -168,6 +198,10 @@ export default async function CollegePage({ params }: { params: Params }) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 pb-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFor(college)) }}
+      />
       <header>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-bold text-brand-green-700">
