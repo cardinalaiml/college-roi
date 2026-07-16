@@ -48,6 +48,31 @@ Notes:
   nameservers, switch it back to the registrar's default nameservers
   first, or the records you add at the registrar won't be authoritative.
 
+### This project: `tasselcost.com` is registered at Hostinger
+
+Hostinger is both the registrar and the DNS host, so everything happens
+in hPanel — no third party. Path: **hPanel → Domains → `tasselcost.com`
+→ DNS / Nameservers → DNS records**. (Panel labels may differ slightly
+from these exact words; the structure is what to follow.)
+
+The one gotcha: a freshly registered Hostinger domain ships with
+**default parking records** — an `A` record on `@` pointing at a
+Hostinger parking IP, plus a `www` record to the same. **Edit those
+existing records; don't add new ones alongside them.** Two `A` records
+on `@` (parking + your VPS) round-robin, so the site loads the parking
+page roughly half the time.
+
+1. **Check the nameservers first** (same screen, "Nameservers"
+   section). For the hPanel DNS zone to be authoritative they must be
+   Hostinger's defaults — `ns1.dns-parking.com` / `ns2.dns-parking.com`.
+   If a website builder or another host changed them, switch them back
+   or your record edits won't take effect.
+2. **Get the VPS IPv4:** hPanel → **VPS** → your server → overview.
+3. **Edit the existing `@` A record** → set its value to the VPS IPv4.
+4. **Set `www`** → an `A` record to the same VPS IPv4, replacing any
+   default `www` parking record.
+5. Save. The Search Console `TXT` record in §2 goes in this same screen.
+
 Confirm propagation before running Certbot:
 
 ```bash
