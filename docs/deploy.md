@@ -14,7 +14,9 @@ Nginx.
 - A Hostinger KVM VPS (minimum KVM 2; KVM 4 gives more headroom for the
   Scorecard row-count and any AI-summary bursts).
 - A domain pointed to the VPS's IPv4 address (Cloudflare or the
-  registrar's DNS).
+  registrar's DNS). Not using Cloudflare? See
+  [launch-without-cloudflare.md](launch-without-cloudflare.md) for the
+  exact DNS records and Search Console verification steps.
 - Local SSH access as `root` to the VPS.
 - Push access to `github.com/cardinalaiml/college-roi` (already set up
   via `~/.ssh/id_ed25519`).
