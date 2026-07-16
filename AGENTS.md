@@ -1,5 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+See [CLAUDE.md](CLAUDE.md) for repository guidance — commands, architecture, deploy behavior, and conventions.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+(An earlier version of this file warned that this repo uses a modified Next.js with docs in `node_modules/next/dist/docs/`. That was a template leftover — the directory doesn't exist and the installed Next.js is stock 14.2.5.)
